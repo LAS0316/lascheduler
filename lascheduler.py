@@ -5,7 +5,7 @@ import pandas as pd
 import datetime
 import json
 import re
-import pytz  # 시간대 처리를 위해 추가
+import pytz
 
 # 1. 페이지 설정
 st.set_page_config(page_title="lascheduler", layout="wide")
@@ -31,14 +31,12 @@ def get_las_data():
         st.error(f"❌ 데이터를 가져오는 중 오류 발생: {e}")
         return pd.DataFrame(), []
 
-# 🔥 한국 시간 기준으로 부재 여부를 판별하는 함수
+# 한국 시간 기준으로 부재 여부를 판별하는 함수
 def is_currently_absent(schedule_str):
-    # 서버 시간이 아닌 '한국 시간'을 가져옵니다.
     tz_kst = pytz.timezone('Asia/Seoul')
     now = datetime.datetime.now(tz_kst)
     now_val = now.hour * 100 + now.minute
     
-    # 시간 범위 추출 (12-18, 12:00-18:00 등)
     time_match = re.search(r'(\d{1,2})[:]?(\d{0,2})[-~](\d{1,2})[:]?(\d{0,2})', schedule_str)
     
     if time_match:
@@ -69,7 +67,6 @@ if not df_fixed.empty:
     with col_btn2:
         st.link_button("📝 캘린더 시트 수정하러 가기", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
     
-    # 한국 시간 표시
     tz_kst = pytz.timezone('Asia/Seoul')
     now = datetime.datetime.now(tz_kst)
     days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
@@ -85,6 +82,11 @@ if not df_fixed.empty:
             
         with cols[i % 3]:
             name = str(row.get("이름", f"멤버{i+1}"))
+            # 🔥 시트에서 '색코드' 열을 읽어옵니다. 값이 없으면 기본색(#111) 적용
+            name_color = str(row.get("색코드", "#111")).strip()
+            if not name_color:
+                name_color = "#111"
+                
             display_schedule = str(row.get(today_name, "자유"))
             is_special = False
             
@@ -94,7 +96,6 @@ if not df_fixed.empty:
                     is_special = True
                     break
             
-            # 한국 시간 기반 판별
             absent_flag = is_currently_absent(display_schedule)
             
             if absent_flag:
@@ -106,9 +107,10 @@ if not df_fixed.empty:
                 text_color = "#1b5e20" 
                 status_text = "활동 가능"
                 
+            # 🔥 이름 부분에 name_color 변수를 적용했습니다.
             st.markdown(f"""
             <div style='display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; padding: 20px 10px; margin-bottom: 5px; background-color: {bg_color}; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 110px;'>
-                <div style='margin: 0; padding-bottom: 5px; font-size: 1.8rem; font-weight: bold; color: #111; text-align: center;'>{name}</div>
+                <div style='margin: 0; padding-bottom: 5px; font-size: 1.8rem; font-weight: bold; color: {name_color}; text-align: center;'>{name}</div>
                 <div style='font-size: 1.2rem; font-weight: 900; color: {text_color}; text-align: center;'>{status_text}</div>
             </div>
             """, unsafe_allow_html=True)
