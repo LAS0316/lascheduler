@@ -5,6 +5,7 @@ import pandas as pd
 import datetime
 import json
 import re
+import pytz  # 시간대 처리를 위해 추가
 
 # 1. 페이지 설정
 st.set_page_config(page_title="lascheduler", layout="wide")
@@ -30,14 +31,14 @@ def get_las_data():
         st.error(f"❌ 데이터를 가져오는 중 오류 발생: {e}")
         return pd.DataFrame(), []
 
-# 🔥 부재 여부를 시간 기반으로 '엄격하게' 판별하는 함수
+# 🔥 한국 시간 기준으로 부재 여부를 판별하는 함수
 def is_currently_absent(schedule_str):
-    # 현재 시간 (시, 분)
-    now = datetime.datetime.now()
-    now_val = now.hour * 100 + now.minute # 예: 18:30 -> 1830
+    # 서버 시간이 아닌 '한국 시간'을 가져옵니다.
+    tz_kst = pytz.timezone('Asia/Seoul')
+    now = datetime.datetime.now(tz_kst)
+    now_val = now.hour * 100 + now.minute
     
-    # '12-18' 또는 '12:00-18:00' 등 숫자 범위를 찾습니다.
-    # 숫자만 달랑 있는 경우(12-18)를 위해 뒤에 00을 붙여서 비교합니다.
+    # 시간 범위 추출 (12-18, 12:00-18:00 등)
     time_match = re.search(r'(\d{1,2})[:]?(\d{0,2})[-~](\d{1,2})[:]?(\d{0,2})', schedule_str)
     
     if time_match:
@@ -49,11 +50,9 @@ def is_currently_absent(schedule_str):
         start_val = start_h * 100 + start_m
         end_val = end_h * 100 + end_m
         
-        # 현재 시간이 범위 내에 있다면 '무조건' 부재 중
         if start_val <= now_val < end_val:
             return True
             
-    # 시간 범위가 없거나 범위 밖이라면, 단어가 포함되어 있더라도 '활동 가능'으로 간주
     return False
 
 df_fixed, special_list = get_las_data()
@@ -70,12 +69,14 @@ if not df_fixed.empty:
     with col_btn2:
         st.link_button("📝 캘린더 시트 수정하러 가기", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
     
-    now = datetime.datetime.now()
+    # 한국 시간 표시
+    tz_kst = pytz.timezone('Asia/Seoul')
+    now = datetime.datetime.now(tz_kst)
     days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
     today_name = days[now.weekday()]
     today_date = f"{now.month}/{now.day}"
 
-    st.info(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
+    st.info(f"현재 한국 시간: {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
 
     st.subheader("👥 멤버 실시간 상태")
     for i, row in df_fixed.iterrows():
@@ -93,7 +94,7 @@ if not df_fixed.empty:
                     is_special = True
                     break
             
-            # 🔥 시간 기반 부재 중 판별 (단어보다 시간이 우선)
+            # 한국 시간 기반 판별
             absent_flag = is_currently_absent(display_schedule)
             
             if absent_flag:
