@@ -3,67 +3,81 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 import datetime
-import re
+import json
 
+# --- lascheduler 페이지 설정 ---
 st.set_page_config(page_title="lascheduler", layout="wide")
 
+# --- las-bot 데이터 로드 함수 ---
 @st.cache_data(ttl=5)
 def get_las_data():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("key.json", scope)
-    client = gspread.authorize(creds)
     
-    # 본인의 구글 시트 제목
-    spreadsheet = client.open("펭별 시간표 공유") 
-    
-    # 1. 고정 일정 시트 읽기
-    sheet1 = spreadsheet.worksheet("고정 일정")
-    df_fixed = pd.DataFrame(sheet1.get_all_records())
-    
-    # 2. 특수 일정 시트 읽기
     try:
-        sheet2 = spreadsheet.worksheet("특수 일정")
-        # 데이터가 있는 모든 행을 리스트로 가져옴
-        special_list = sheet2.col_values(1)[1:] # 첫 번째 열의 제목 제외 데이터들
-    except:
-        special_list = []
+        # Streamlit Cloud의 Secrets에서 보안 정보(key.json 내용)를 읽어옵니다.
+        # 나중에 웹 설정창의 [gcp_service_account] 섹션에 입력할 값입니다.
+        key_dict = json.loads(st.secrets["gcp_service_account"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, scope)
+        client = gspread.authorize(creds)
         
-    return df_fixed, special_list
+        # 시트 이름: 펭별 시간표 공유
+        spreadsheet = client.open("펭별 시간표 공유") 
+        
+        # 1. '고정 일정' 시트 데이터 읽기
+        sheet1 = spreadsheet.worksheet("고정 일정")
+        df_fixed = pd.DataFrame(sheet1.get_all_records())
+        
+        # 2. '특수 일정' 시트 데이터 읽기
+        try:
+            sheet2 = spreadsheet.worksheet("특수 일정")
+            # 첫 번째 열의 모든 데이터를 가져옴 (제목 제외)
+            special_list = sheet2.col_values(1)[1:] 
+        except:
+            special_list = []
+            
+        return df_fixed, special_list
+    except Exception as e:
+        st.error(f"❌ 데이터를 가져오는 중 오류 발생: {e}")
+        return pd.DataFrame(), []
 
+# 데이터 불러오기
 df_fixed, special_list = get_las_data()
 
+# --- 화면 상단: 동기화 버튼 ---
 if st.button("🔄 데이터 즉시 동기화"):
     st.cache_data.clear()
     st.rerun()
 
+# --- 메인 대시보드 UI ---
 if not df_fixed.empty:
     st.title("📅 lascheduler : 팀 실시간 시간표")
     
     now = datetime.datetime.now()
-    today_name = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"][now.weekday()]
+    days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+    today_name = days[now.weekday()]
     today_date = f"{now.month}/{now.day}" # '3/4' 형태
 
     st.info(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
 
+    st.subheader("👥 멤버 실시간 상태")
     cols = st.columns(len(df_fixed))
     
     for i, row in df_fixed.iterrows():
         with cols[i]:
-            name = row.get("이름", f"멤버{i+1}")
+            name = str(row.get("이름", f"멤버{i+1}"))
             
-            # 기본값은 고정 일정
+            # 기본 일정 (고정 일정 탭)
             display_schedule = str(row.get(today_name, "자유"))
             is_special = False
             
-            # 특수 일정 리스트에서 (오늘 날짜 + 이름)이 모두 포함된 문장이 있는지 검사
+            # 특수 일정 체크 (오늘 날짜와 이름이 모두 포함된 줄이 있는지 확인)
             for note in special_list:
-                if today_date in note and name in note:
-                    # 예: "라스 3/4 13-15 개인일정"에서 날짜와 이름을 뺀 나머지 내용 추출
+                if today_date in str(note) and name in str(note):
                     display_schedule = f"⭐ {note}"
                     is_special = True
-                    break # 가장 먼저 찾은 특수 일정 적용
+                    break
             
-            # 상태 판별 (수업, 알바, 개인일정)
+            # 상태 판별 (Las님의 요청: 수업, 알바, 개인일정)
             if any(kw in display_schedule for kw in ["수업", "알바", "개인일정"]):
                 status_icon, status_text = "🔴", "부재 중"
             elif "자유" in display_schedule or not display_schedule.strip():
@@ -81,3 +95,5 @@ if not df_fixed.empty:
     st.divider()
     st.subheader("🗓️ 주간 고정 일정표 (las-bot)")
     st.dataframe(df_fixed, use_container_width=True)
+else:
+    st.warning("데이터가 비어있거나 시트 이름을 확인해 주세요!")
