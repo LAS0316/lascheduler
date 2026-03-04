@@ -14,13 +14,13 @@ def get_las_data():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
     try:
-        # Streamlit Cloud의 Secrets에서 보안 정보(key.json 내용)를 읽어옵니다.
-        # 나중에 웹 설정창의 [gcp_service_account] 섹션에 입력할 값입니다.
-        key_dict = json.loads(st.secrets["gcp_service_account"])
+        # Streamlit Cloud의 Secrets에서 보안 정보 읽기
+        # 설정창에 입력한 json_data 안의 내용을 딕셔너리로 변환합니다.
+        key_dict = json.loads(st.secrets["gcp_service_account"]["json_data"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, scope)
         client = gspread.authorize(creds)
         
-        # 시트 이름: 펭별 시간표 공유
+        # 구글 시트 이름: 펭별 시간표 공유
         spreadsheet = client.open("펭별 시간표 공유") 
         
         # 1. '고정 일정' 시트 데이터 읽기
@@ -36,6 +36,7 @@ def get_las_data():
             special_list = []
             
         return df_fixed, special_list
+        
     except Exception as e:
         st.error(f"❌ 데이터를 가져오는 중 오류 발생: {e}")
         return pd.DataFrame(), []
@@ -77,7 +78,7 @@ if not df_fixed.empty:
                     is_special = True
                     break
             
-            # 상태 판별 (Las님의 요청: 수업, 알바, 개인일정)
+            # 상태 판별 (수업, 알바, 개인일정)
             if any(kw in display_schedule for kw in ["수업", "알바", "개인일정"]):
                 status_icon, status_text = "🔴", "부재 중"
             elif "자유" in display_schedule or not display_schedule.strip():
