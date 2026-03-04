@@ -51,7 +51,6 @@ if st.button("🔄 데이터 즉시 동기화"):
 
 # --- 메인 대시보드 UI ---
 if not df_fixed.empty:
-    st.title("📅 lascheduler : 팀 실시간 시간표")
     
     now = datetime.datetime.now()
     days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
@@ -94,7 +93,8 @@ if not df_fixed.empty:
                 st.caption(f"일정: {display_schedule}")
 
     st.divider()
-    st.subheader("🗓️ 주간 고정 일정표 (las-bot)")
+    st.subheader("🗓️ 주간 고정 일정표")
     st.dataframe(df_fixed, use_container_width=True)
 else:
     st.warning("데이터가 비어있거나 시트 이름을 확인해 주세요!")
+
