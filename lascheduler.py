@@ -30,20 +30,31 @@ def get_las_data():
         st.error(f"❌ 데이터를 가져오는 중 오류 발생: {e}")
         return pd.DataFrame(), []
 
-# 부재 여부를 시간 기반으로 판별하는 함수
-def check_absence(schedule_str):
-    now_hour = datetime.datetime.now().hour
-    # '12-18' 또는 '12~18' 형태의 숫자 범위를 찾습니다.
-    time_match = re.search(r'(\d{1,2})[-~](\d{1,2})', schedule_str)
+# 🔥 부재 여부를 시간 기반으로 '엄격하게' 판별하는 함수
+def is_currently_absent(schedule_str):
+    # 현재 시간 (시, 분)
+    now = datetime.datetime.now()
+    now_val = now.hour * 100 + now.minute # 예: 18:30 -> 1830
+    
+    # '12-18' 또는 '12:00-18:00' 등 숫자 범위를 찾습니다.
+    # 숫자만 달랑 있는 경우(12-18)를 위해 뒤에 00을 붙여서 비교합니다.
+    time_match = re.search(r'(\d{1,2})[:]?(\d{0,2})[-~](\d{1,2})[:]?(\d{0,2})', schedule_str)
     
     if time_match:
-        start_time = int(time_match.group(1))
-        end_time = int(time_match.group(2))
+        start_h = int(time_match.group(1))
+        start_m = int(time_match.group(2)) if time_match.group(2) else 0
+        end_h = int(time_match.group(3))
+        end_m = int(time_match.group(4)) if time_match.group(4) else 0
         
-        # 현재 시간이 시작 시간과 종료 시간 사이에 있는지 확인
-        if start_time <= now_hour < end_time:
-            return True # 부재 중
-    return False # 활동 가능
+        start_val = start_h * 100 + start_m
+        end_val = end_h * 100 + end_m
+        
+        # 현재 시간이 범위 내에 있다면 '무조건' 부재 중
+        if start_val <= now_val < end_val:
+            return True
+            
+    # 시간 범위가 없거나 범위 밖이라면, 단어가 포함되어 있더라도 '활동 가능'으로 간주
+    return False
 
 df_fixed, special_list = get_las_data()
 
@@ -82,10 +93,10 @@ if not df_fixed.empty:
                     is_special = True
                     break
             
-            # 🔥 시간 기반 부재 중 판별
-            is_absent = check_absence(display_schedule)
+            # 🔥 시간 기반 부재 중 판별 (단어보다 시간이 우선)
+            absent_flag = is_currently_absent(display_schedule)
             
-            if is_absent:
+            if absent_flag:
                 bg_color = "#ff8a80"  
                 text_color = "#b71c1c" 
                 status_text = "부재 중"
