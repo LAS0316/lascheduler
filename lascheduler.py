@@ -65,13 +65,11 @@ if not df_fixed.empty:
 
     st.subheader("👥 멤버 실시간 상태")
     
-    # 🔥 변경된 부분: 3명 기준으로 줄바꿈하는 로직
+    # 3명 기준으로 줄바꿈하는 로직
     for i, row in df_fixed.iterrows():
-        # 인덱스(i)가 3의 배수일 때마다 새로운 3칸짜리 가로줄을 만듭니다.
         if i % 3 == 0:
             cols = st.columns(3)
             
-        # 0, 1, 2번은 각각 첫 번째 줄의 0, 1, 2열에 들어갑니다.
         with cols[i % 3]:
             name = str(row.get("이름", f"멤버{i+1}"))
             
@@ -86,21 +84,21 @@ if not df_fixed.empty:
                     is_special = True
                     break
             
-            # 🔥 변경된 부분: 배경색을 더 찐하게, 다크모드에서도 눈에 띄게!
+            # 배경색 & 글자색 설정
             if any(kw in display_schedule for kw in ["수업", "알바", "개인일정"]):
-                bg_color = "#ff8a80"  # 더 진해진 빨간색
-                text_color = "#b71c1c" # 아주 딥한 빨간 글씨
+                bg_color = "#ff8a80"  
+                text_color = "#b71c1c" 
                 status_text = "부재 중"
             elif "자유" in display_schedule or not display_schedule.strip():
-                bg_color = "#a5d6a7"  # 더 진해진 초록색
-                text_color = "#1b5e20" # 아주 딥한 초록 글씨
+                bg_color = "#a5d6a7"  
+                text_color = "#1b5e20" 
                 status_text = "활동 가능"
             else:
-                bg_color = "#ffe082"  # 더 진해진 노란색
-                text_color = "#e65100" # 아주 딥한 주황 글씨
+                bg_color = "#ffe082"  
+                text_color = "#e65100" 
                 status_text = "확인 필요"
                 
-            # 🔥 변경된 부분: Flexbox를 이용한 완벽한 상하좌우 가운데 정렬
+            # 🔥 h2 태그를 div로 바꿔서 체인 아이콘을 완전히 박멸했습니다.
             st.markdown(f"""
             <div style='
                 display: flex; 
@@ -114,12 +112,11 @@ if not df_fixed.empty:
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                 height: 110px;
             '>
-                <h2 style='margin: 0; padding-bottom: 5px; font-size: 1.8rem; color: #111; text-align: center;'>{name}</h2>
+                <div style='margin: 0; padding-bottom: 5px; font-size: 1.8rem; font-weight: bold; color: #111; text-align: center;'>{name}</div>
                 <div style='font-size: 1.2rem; font-weight: 900; color: {text_color}; text-align: center;'>{status_text}</div>
             </div>
             """, unsafe_allow_html=True)
             
-            # 아래에 뜨는 세부 일정도 가운데로 예쁘게 정렬했습니다.
             if is_special:
                 st.warning(display_schedule)
             else:
