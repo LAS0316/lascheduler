@@ -5,17 +5,17 @@ import pandas as pd
 import datetime
 import json
 
-# --- lascheduler 페이지 설정 ---
+# 1. 페이지 설정
 st.set_page_config(page_title="lascheduler", layout="wide")
 
-# --- las-bot 데이터 로드 함수 ---
+# 2. 데이터 로드 함수
 @st.cache_data(ttl=5)
 def get_las_data():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     
     try:
-        # Streamlit Cloud의 Secrets에서 보안 정보 읽기
-        # 설정창에 입력한 json_data 안의 내용을 딕셔너리로 변환합니다.
+        # Streamlit Secrets에서 보안 정보 읽기
+        # Secrets 설정 시 반드시 json_data = ''' { ... } ''' (작은따옴표 3개) 형식을 지켜주세요.
         key_dict = json.loads(st.secrets["gcp_service_account"]["json_data"])
         creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, scope)
         client = gspread.authorize(creds)
@@ -23,15 +23,14 @@ def get_las_data():
         # 구글 시트 이름: 펭별 시간표 공유
         spreadsheet = client.open("펭별 시간표 공유") 
         
-        # 1. '고정 일정' 시트 데이터 읽기
+        # '고정 일정' 시트 데이터
         sheet1 = spreadsheet.worksheet("고정 일정")
         df_fixed = pd.DataFrame(sheet1.get_all_records())
         
-        # 2. '특수 일정' 시트 데이터 읽기
+        # '특수 일정' 시트 데이터
         try:
             sheet2 = spreadsheet.worksheet("특수 일정")
-            # 첫 번째 열의 모든 데이터를 가져옴 (제목 제외)
-            special_list = sheet2.col_values(1)[1:] 
+            special_list = sheet2.col_values(1)[1:] # 첫 번째 열 전체 (제목 제외)
         except:
             special_list = []
             
@@ -41,21 +40,24 @@ def get_las_data():
         st.error(f"❌ 데이터를 가져오는 중 오류 발생: {e}")
         return pd.DataFrame(), []
 
-# 데이터 불러오기
+# 데이터 실행
 df_fixed, special_list = get_las_data()
 
-# --- 화면 상단: 동기화 버튼 ---
-col1, col2 = st.columns(2)
-    with col1:
+# 3. 메인 UI 시작
+if not df_fixed.empty:
+    
+    # 상단 버튼 배치 (동기화 & 시트 바로가기)
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
         if st.button("🔄 데이터 즉시 동기화", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-    with col2:
-        st.link_button("📝 캘린더 시트 수정하러 가기", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
-
-# --- 메인 대시보드 UI ---
-if not df_fixed.empty:
+    with col_btn2:
+        st.link_button("📝 캘린더 시트 수정하러 가기", 
+                       "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", 
+                       use_container_width=True)
     
+    # 현재 시간 정보
     now = datetime.datetime.now()
     days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
     today_name = days[now.weekday()]
@@ -63,6 +65,7 @@ if not df_fixed.empty:
 
     st.info(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
 
+    # 4. 멤버별 실시간 상태 대시보드
     st.subheader("👥 멤버 실시간 상태")
     cols = st.columns(len(df_fixed))
     
@@ -70,18 +73,18 @@ if not df_fixed.empty:
         with cols[i]:
             name = str(row.get("이름", f"멤버{i+1}"))
             
-            # 기본 일정 (고정 일정 탭)
+            # 기본 일정 가져오기
             display_schedule = str(row.get(today_name, "자유"))
             is_special = False
             
-            # 특수 일정 체크 (오늘 날짜와 이름이 모두 포함된 줄이 있는지 확인)
+            # 특수 일정 체크 (오늘 날짜와 이름이 문장에 들어있는지 확인)
             for note in special_list:
                 if today_date in str(note) and name in str(note):
                     display_schedule = f"⭐ {note}"
                     is_special = True
                     break
             
-            # 상태 판별 (수업, 알바, 개인일정)
+            # 상태 판별 (빨간불: 수업, 알바, 개인일정)
             if any(kw in display_schedule for kw in ["수업", "알바", "개인일정"]):
                 status_icon, status_text = "🔴", "부재 중"
             elif "자유" in display_schedule or not display_schedule.strip():
@@ -92,14 +95,13 @@ if not df_fixed.empty:
             st.metric(label=name, value=f"{status_icon} {status_text}")
             
             if is_special:
-                st.warning(display_schedule)
+                st.warning(display_schedule) # 특수 일정은 노란 박스로 강조
             else:
                 st.caption(f"일정: {display_schedule}")
 
     st.divider()
     st.subheader("🗓️ 주간 고정 일정표")
     st.dataframe(df_fixed, use_container_width=True)
+
 else:
-    st.warning("데이터가 비어있거나 시트 이름을 확인해 주세요!")
-
-
+    st.warning("데이터를 불러올 수 없습니다. 시트 권한이나 설정을 확인해 주세요.")
