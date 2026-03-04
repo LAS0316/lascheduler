@@ -81,19 +81,25 @@ if not df_fixed.empty:
                     is_special = True
                     break
             
-            # 상태 판별
+            # 🔥 배경색 및 글자색 설정
             if any(kw in display_schedule for kw in ["수업", "알바", "개인일정"]):
-                status_icon, status_text = "🔴", "부재 중"
+                bg_color = "#ffebee"  # 연한 빨간색 배경
+                text_color = "#c62828" # 진한 빨간색 글씨
+                status_text = "부재 중"
             elif "자유" in display_schedule or not display_schedule.strip():
-                status_icon, status_text = "🟢", "활동 가능"
+                bg_color = "#e8f5e9"  # 연한 초록색 배경
+                text_color = "#2e7d32" # 진한 초록색 글씨
+                status_text = "활동 가능"
             else:
-                status_icon, status_text = "🟡", "확인 필요"
+                bg_color = "#fffde7"  # 연한 노란색 배경
+                text_color = "#f57f17" # 진한 주황/노란색 글씨
+                status_text = "확인 필요"
                 
-            # 🔥 변경된 UI 부분: 닉네임이 눈에 확 띄는 카드 디자인
+            # 🔥 깔끔한 배경색 카드 렌더링 (이모지 제거)
             st.markdown(f"""
-            <div style='border: 2px solid #e6e6e6; border-radius: 10px; padding: 15px; text-align: center; margin-bottom: 5px; background-color: rgba(128, 128, 128, 0.05);'>
-                <h2 style='margin: 0; padding-bottom: 5px; font-size: 1.6rem;'>👤 {name}</h2>
-                <div style='font-size: 1.1rem; font-weight: bold;'>{status_icon} {status_text}</div>
+            <div style='border-radius: 10px; padding: 15px; text-align: center; margin-bottom: 5px; background-color: {bg_color}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
+                <h2 style='margin: 0; padding-bottom: 5px; font-size: 1.6rem; color: #333;'>{name}</h2>
+                <div style='font-size: 1.1rem; font-weight: bold; color: {text_color};'>{status_text}</div>
             </div>
             """, unsafe_allow_html=True)
             
