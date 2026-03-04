@@ -45,9 +45,13 @@ def get_las_data():
 df_fixed, special_list = get_las_data()
 
 # --- 화면 상단: 동기화 버튼 ---
-if st.button("🔄 데이터 즉시 동기화"):
-    st.cache_data.clear()
-    st.rerun()
+col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 데이터 즉시 동기화", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+    with col2:
+        st.link_button("📝 캘린더 시트 수정하러 가기", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
 
 # --- 메인 대시보드 UI ---
 if not df_fixed.empty:
@@ -97,4 +101,5 @@ if not df_fixed.empty:
     st.dataframe(df_fixed, use_container_width=True)
 else:
     st.warning("데이터가 비어있거나 시트 이름을 확인해 주세요!")
+
 
