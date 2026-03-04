@@ -64,10 +64,15 @@ if not df_fixed.empty:
     st.info(f"현재 시간: {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
 
     st.subheader("👥 멤버 실시간 상태")
-    cols = st.columns(len(df_fixed))
     
+    # 🔥 변경된 부분: 3명 기준으로 줄바꿈하는 로직
     for i, row in df_fixed.iterrows():
-        with cols[i]:
+        # 인덱스(i)가 3의 배수일 때마다 새로운 3칸짜리 가로줄을 만듭니다.
+        if i % 3 == 0:
+            cols = st.columns(3)
+            
+        # 0, 1, 2번은 각각 첫 번째 줄의 0, 1, 2열에 들어갑니다.
+        with cols[i % 3]:
             name = str(row.get("이름", f"멤버{i+1}"))
             
             # 기본 일정 (고정 일정 탭)
@@ -81,32 +86,44 @@ if not df_fixed.empty:
                     is_special = True
                     break
             
-            # 🔥 배경색 및 글자색 설정
+            # 🔥 변경된 부분: 배경색을 더 찐하게, 다크모드에서도 눈에 띄게!
             if any(kw in display_schedule for kw in ["수업", "알바", "개인일정"]):
-                bg_color = "#ffebee"  # 연한 빨간색 배경
-                text_color = "#c62828" # 진한 빨간색 글씨
+                bg_color = "#ff8a80"  # 더 진해진 빨간색
+                text_color = "#b71c1c" # 아주 딥한 빨간 글씨
                 status_text = "부재 중"
             elif "자유" in display_schedule or not display_schedule.strip():
-                bg_color = "#e8f5e9"  # 연한 초록색 배경
-                text_color = "#2e7d32" # 진한 초록색 글씨
+                bg_color = "#a5d6a7"  # 더 진해진 초록색
+                text_color = "#1b5e20" # 아주 딥한 초록 글씨
                 status_text = "활동 가능"
             else:
-                bg_color = "#fffde7"  # 연한 노란색 배경
-                text_color = "#f57f17" # 진한 주황/노란색 글씨
+                bg_color = "#ffe082"  # 더 진해진 노란색
+                text_color = "#e65100" # 아주 딥한 주황 글씨
                 status_text = "확인 필요"
                 
-            # 🔥 깔끔한 배경색 카드 렌더링 (이모지 제거)
+            # 🔥 변경된 부분: Flexbox를 이용한 완벽한 상하좌우 가운데 정렬
             st.markdown(f"""
-            <div style='border-radius: 10px; padding: 15px; text-align: center; margin-bottom: 5px; background-color: {bg_color}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>
-                <h2 style='margin: 0; padding-bottom: 5px; font-size: 1.6rem; color: #333;'>{name}</h2>
-                <div style='font-size: 1.1rem; font-weight: bold; color: {text_color};'>{status_text}</div>
+            <div style='
+                display: flex; 
+                flex-direction: column; 
+                justify-content: center; 
+                align-items: center; 
+                border-radius: 12px; 
+                padding: 20px 10px; 
+                margin-bottom: 5px; 
+                background-color: {bg_color}; 
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                height: 110px;
+            '>
+                <h2 style='margin: 0; padding-bottom: 5px; font-size: 1.8rem; color: #111; text-align: center;'>{name}</h2>
+                <div style='font-size: 1.2rem; font-weight: 900; color: {text_color}; text-align: center;'>{status_text}</div>
             </div>
             """, unsafe_allow_html=True)
             
+            # 아래에 뜨는 세부 일정도 가운데로 예쁘게 정렬했습니다.
             if is_special:
                 st.warning(display_schedule)
             else:
-                st.caption(f"일정: {display_schedule}")
+                st.caption(f"<div style='text-align: center; margin-bottom: 15px;'>일정: {display_schedule}</div>", unsafe_allow_html=True)
 
     st.divider()
     st.subheader("🗓️ 주간 고정 일정표")
