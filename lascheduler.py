@@ -60,11 +60,15 @@ if not df_fixed.empty:
     
     st.title("📅 펭별 시간표")
 
-    # 방송 공지
+    # 🔥 [수정] 상단 방송 공지 강조 (이름 부분 강조)
     today_broadcasts = [b for b in broadcast_list if today_date in str(b)]
     if today_broadcasts:
         for b in today_broadcasts:
-            st.error(f"오늘 방송: {b}")
+            # 첫 단어(보통 이름)를 추출해서 강조합니다.
+            parts = b.split(' ', 1)
+            main_name = f"<span style='font-size: 1.4rem; font-weight: 900;'>{parts[0]}</span>"
+            rest_info = parts[1] if len(parts) > 1 else ""
+            st.error(f"오늘 방송: {main_name} {rest_info}", unsafe_allow_html=True)
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
@@ -80,6 +84,8 @@ if not df_fixed.empty:
             cols = st.columns(3)
         with cols[i % 3]:
             name = str(row.get("이름", f"멤버{i+1}"))
+            # 🔥 색코드 읽기 (없으면 투명 처리)
+            point_color = str(row.get("색코드", "#111")).strip() or "#111"
             
             days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
             today_name = days[now.weekday()]
@@ -95,10 +101,12 @@ if not df_fixed.empty:
             absent_flag = is_currently_absent(display_schedule)
             bg_color, text_color, status_text = ("#ff8a80", "#b71c1c", "부재 중") if absent_flag else ("#2ecc71", "#004d40", "활동 가능")
                 
-            # 🔥 [수정] 모든 멤버의 이름을 진한 검정색(#111)으로 고정
+            # 🔥 [수정] 닉네임 옆에 색상이 들어간 동그라미 포인트 추가
             st.markdown(f"""
             <div style='display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; padding: 20px 10px; margin-bottom: 5px; background-color: {bg_color}; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 110px;'>
-                <div style='margin: 0; padding-bottom: 5px; font-size: 1.8rem; font-weight: 900; color: #111; text-align: center;'>{name}</div>
+                <div style='margin: 0; padding-bottom: 5px; font-size: 1.8rem; font-weight: 900; color: #111; text-align: center;'>
+                    {name} <span style='color: {point_color}; font-size: 1.2rem; vertical-align: middle;'>●</span>
+                </div>
                 <div style='font-size: 1.2rem; font-weight: 900; color: {text_color}; text-align: center;'>{status_text}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -113,7 +121,6 @@ if not df_fixed.empty:
     st.subheader("🗓️ 주간 고정 일정표")
     st.dataframe(df_fixed, use_container_width=True)
 
-    # 하단 시간 정보
     st.caption(f"최종 업데이트 확인 (KST): {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
 
 else:
