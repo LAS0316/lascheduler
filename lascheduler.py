@@ -10,28 +10,41 @@ import pytz
 # 1. 페이지 설정
 st.set_page_config(page_title="lascheduler", layout="wide")
 
-# 🔥 [추가] 작은 화면에서도 버튼 줄바꿈 방지 및 텍스트 크기 조정 CSS
+# 🔥 [수정] 버튼들을 상단에 한 줄로 강제 정렬하는 CSS
 st.markdown("""
     <style>
-    /* 버튼 스타일 최적화 */
-    div.stButton > button {
-        width: auto !important;
-        min-width: 90px !important;
-        padding: 0px 10px !important;
-        font-size: 13px !important;
-        height: 32px !important;
-        white-space: nowrap !important; /* 글자 줄바꿈 절대 방지 */
+    /* 상단 헤더 컨테이너 */
+    .header-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: -20px;
     }
-    /* 버튼 사이 간격 좁히기 */
-    [data-testid="column"] {
-        width: min-content !important;
-        flex: 0 1 auto !important;
-        min-width: 100px !important;
-        margin-right: -15px !important;
+    /* 버튼 공통 스타일 */
+    .custom-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #262730;
+        border: 1px solid rgba(250, 250, 250, 0.2);
+        border-radius: 8px;
+        color: white;
+        padding: 6px 12px;
+        font-size: 14px;
+        text-decoration: none;
+        white-space: nowrap;
+        height: 35px;
+        cursor: pointer;
     }
-    /* 타이틀 중앙 정렬 여백 조정 */
-    h1 {
-        padding: 0.5rem 0rem !important;
+    .custom-btn:hover {
+        border-color: #ff4b4b;
+        color: #ff4b4b;
+    }
+    /* 타이틀 중앙 정렬 */
+    .main-title {
+        text-align: center;
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin: 20px 0;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -45,17 +58,14 @@ def get_las_data():
         creds = ServiceAccountCredentials.from_json_keyfile_dict(key_dict, scope)
         client = gspread.authorize(creds)
         spreadsheet = client.open("펭별 시간표 공유") 
-        
         sheet1 = spreadsheet.worksheet("고정 일정")
         df_fixed = pd.DataFrame(sheet1.get_all_records())
-        
         try:
             sheet2 = spreadsheet.worksheet("특수 일정")
             broadcast_list = sheet2.col_values(1)[2:] 
             special_list = sheet2.col_values(2)[2:] 
         except:
             broadcast_list, special_list = [], []
-            
         try:
             sheet3 = spreadsheet.worksheet("기타")
             names = sheet3.col_values(1)[1:]
@@ -63,7 +73,6 @@ def get_las_data():
             color_map = dict(zip(names, colors))
         except:
             color_map = {}
-            
         return df_fixed, broadcast_list, special_list, color_map
     except Exception as e:
         st.error(f"❌ 데이터를 가져오는 중 오류 발생: {e}")
@@ -91,16 +100,14 @@ if not df_fixed.empty:
     now = datetime.datetime.now(tz_kst)
     today_date = f"{now.month:02d}/{now.day:02d}"
 
-    # 최상단 머릿말 버튼 (줄바꿈 방지 적용)
-    header_col1, header_col2, header_col3 = st.columns([1, 1, 5]) 
-    with header_col1:
-        if st.button("🔄 즉시 동기화"):
-            st.cache_data.clear()
-            st.rerun()
-    with header_col2:
-        st.link_button("📝 시트 수정", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0")
-
-    st.markdown("<h1 style='text-align: center;'>📅 펭별 시간표</h1>", unsafe_allow_html=True)
+    # 🔥 [수정] HTML/CSS 기반의 최상단 버튼 (줄바꿈 절대 안 됨)
+    st.markdown(f"""
+        <div class="header-container">
+            <a href="javascript:window.location.reload();" class="custom-btn" onclick="window.location.reload();">🔄 즉시 동기화</a>
+            <a href="https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0" target="_blank" class="custom-btn">📝 시트 수정</a>
+        </div>
+        <div class="main-title">📅 펭별 시간표</div>
+    """, unsafe_allow_html=True)
 
     # 오늘 라이브 카드 UI
     today_broadcasts = [b for b in broadcast_list if today_date in str(b)]
@@ -159,7 +166,7 @@ if not df_fixed.empty:
     st.divider()
     st.subheader("🗓️ 주간 고정 일정표")
     st.dataframe(df_fixed, use_container_width=True)
-    st.caption(f"최종 업데이트 확인 (KST): {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
+    st.caption(f"최종 업데이트 확인 (KST): {now.strftime('%Y-%m-%d %H:%M')} ({days[now.weekday()]})")
 
 else:
     st.warning("데이터가 비어있거나 설정을 확인해 주세요!")
