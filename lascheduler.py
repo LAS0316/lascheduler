@@ -20,14 +20,12 @@ def get_las_data():
         client = gspread.authorize(creds)
         spreadsheet = client.open("펭별 시간표 공유") 
         
-        # 고정 일정 로드
         sheet1 = spreadsheet.worksheet("고정 일정")
         df_fixed = pd.DataFrame(sheet1.get_all_records())
         
-        # 특수 일정 시트 로드
         try:
             sheet2 = spreadsheet.worksheet("특수 일정")
-            # A열: 방송 일정, B열: 특수 일정 (2행 예시는 제외하기 위해 2번 인덱스부터 가져옴)
+            # A열: 방송 일정, B열: 특수 일정 (2행 예시 제외)
             broadcast_list = sheet2.col_values(1)[2:] 
             special_list = sheet2.col_values(2)[2:] 
         except:
@@ -59,15 +57,16 @@ df_fixed, broadcast_list, special_list = get_las_data()
 if not df_fixed.empty:
     tz_kst = pytz.timezone('Asia/Seoul')
     now = datetime.datetime.now(tz_kst)
-    today_date = f"{now.month:02d}/{now.day:02d}" # '03/05' 형태
+    today_date = f"{now.month:02d}/{now.day:02d}"
     
-    st.title("📅 lascheduler : 팀 실시간 시간표")
+    # 상단 타이틀 변경
+    st.title("📅 펭별 시간표")
 
-    # 🔥 [추가 기능] 상단 방송 라이브 공지 (A열 데이터 기반)
+    # 🔥 [수정] 간결해진 방송 공지 (이모지 및 TODAY LIVE 문구 제거)
     today_broadcasts = [b for b in broadcast_list if today_date in str(b)]
     if today_broadcasts:
         for b in today_broadcasts:
-            st.error(f"🚨 **TODAY LIVE INFO:** {b}", icon="🎥")
+            st.error(f"오늘 방송: {b}")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
@@ -77,10 +76,6 @@ if not df_fixed.empty:
     with col_btn2:
         st.link_button("📝 캘린더 시트 수정하러 가기", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
     
-    days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
-    today_name = days[now.weekday()]
-    st.info(f"현재 한국 시간: {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
-
     st.subheader("👥 멤버 실시간 상태")
     for i, row in df_fixed.iterrows():
         if i % 3 == 0:
@@ -88,10 +83,12 @@ if not df_fixed.empty:
         with cols[i % 3]:
             name = str(row.get("이름", f"멤버{i+1}"))
             name_color = str(row.get("색코드", "#37474F")).strip() or "#37474F"
+            
+            days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+            today_name = days[now.weekday()]
             display_schedule = str(row.get(today_name, "자유"))
             is_special = False
             
-            # 🔥 B열(special_list)에서 오늘 날짜와 이름이 포함된 특수 일정 확인
             for note in special_list:
                 if today_date in str(note) and name in str(note):
                     display_schedule = f"⭐ {note}"
@@ -117,5 +114,9 @@ if not df_fixed.empty:
     st.divider()
     st.subheader("🗓️ 주간 고정 일정표")
     st.dataframe(df_fixed, use_container_width=True)
+
+    # 🔥 [수정] 한국 시간 정보를 가장 아래로 이동
+    st.caption(f"최종 업데이트 확인 (KST): {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
+
 else:
     st.warning("데이터가 비어있거나 설정을 확인해 주세요!")
