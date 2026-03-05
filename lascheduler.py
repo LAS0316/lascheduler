@@ -59,29 +59,37 @@ if not df_fixed.empty:
     
     st.title("📅 펭별 시간표")
 
-    # 🔥 [수정] 오늘 라이브 카드 UI
+    # 🔥 [수정] 오늘 라이브 카드 UI (색코드 배경 적용)
     today_broadcasts = [b for b in broadcast_list if today_date in str(b)]
     if today_broadcasts:
         st.subheader("📺 오늘 라이브")
         b_cols = st.columns(len(today_broadcasts) if len(today_broadcasts) < 4 else 4)
+        
+        # 멤버별 색코드를 찾기 위한 딕셔너리 생성
+        member_colors = {str(row['이름']): str(row.get('색코드', '#ff8a80')) for _, row in df_fixed.iterrows()}
+
         for idx, b in enumerate(today_broadcasts):
             with b_cols[idx % 4]:
                 parts = b.split(' ', 1)
                 b_name = parts[0]
-                # 날짜 제외하고 시간과 내용만 추출 (예: 16-20 방송)
                 b_info = parts[1].replace(today_date, "").strip() if len(parts) > 1 else ""
+                
+                # 해당 멤버의 색코드를 가져오거나 기본 빨간색 적용
+                bg_color = member_colors.get(b_name, "#ff8a80")
+                if not bg_color or bg_color == "nan": bg_color = "#ff8a80"
                 
                 st.markdown(f"""
                 <div style='
-                    background-color: #ff8a80; 
+                    background-color: {bg_color}; 
                     border-radius: 10px; 
                     padding: 15px; 
                     text-align: center; 
-                    border: 2px solid #b71c1c;
+                    border: 2px solid rgba(0,0,0,0.1);
                     margin-bottom: 10px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                 '>
-                    <div style='font-size: 1.4rem; font-weight: 900; color: #b71c1c;'>{b_name}</div>
-                    <div style='font-size: 0.9rem; font-weight: bold; color: #333;'>{b_info}</div>
+                    <div style='font-size: 1.4rem; font-weight: 900; color: #111;'>{b_name}</div>
+                    <div style='font-size: 0.9rem; font-weight: bold; color: #111;'>{b_info}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
