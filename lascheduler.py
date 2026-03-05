@@ -20,9 +20,11 @@ def get_las_data():
         client = gspread.authorize(creds)
         spreadsheet = client.open("펭별 시간표 공유") 
         
+        # 고정 일정 로드
         sheet1 = spreadsheet.worksheet("고정 일정")
         df_fixed = pd.DataFrame(sheet1.get_all_records())
         
+        # 특수 일정 로드
         try:
             sheet2 = spreadsheet.worksheet("특수 일정")
             broadcast_list = sheet2.col_values(1)[2:] 
@@ -30,10 +32,20 @@ def get_las_data():
         except:
             broadcast_list, special_list = [], []
             
-        return df_fixed, broadcast_list, special_list
+        # 🔥 [신규] '기타' 시트에서 색코드 로드
+        try:
+            sheet3 = spreadsheet.worksheet("기타")
+            # A열: 이름, B열: 색코드 (1행 제목 제외)
+            names = sheet3.col_values(1)[1:]
+            colors = sheet3.col_values(2)[1:]
+            color_map = dict(zip(names, colors))
+        except:
+            color_map = {}
+            
+        return df_fixed, broadcast_list, special_list, color_map
     except Exception as e:
         st.error(f"❌ 데이터를 가져오는 중 오류 발생: {e}")
-        return pd.DataFrame(), [], []
+        return pd.DataFrame(), [], [], {}
 
 def is_currently_absent(schedule_str):
     tz_kst = pytz.timezone('Asia/Seoul')
@@ -49,7 +61,7 @@ def is_currently_absent(schedule_str):
             return True
     return False
 
-df_fixed, broadcast_list, special_list = get_las_data()
+df_fixed, broadcast_list, special_list, color_map = get_las_data()
 
 # 3. 메인 UI
 if not df_fixed.empty:
@@ -57,25 +69,34 @@ if not df_fixed.empty:
     now = datetime.datetime.now(tz_kst)
     today_date = f"{now.month:02d}/{now.day:02d}"
     
+    # 상단 타이틀
     st.title("📅 펭별 시간표")
 
-    # 🔥 [수정] 오늘 라이브 카드 UI (색코드 배경 적용)
+    # 🔥 [수정] 버튼 위치 이동 (타이틀과 라이브 사이)
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("🔄 데이터 즉시 동기화", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+    with col_btn2:
+        st.link_button("📝 캘린더 시트 수정하러 가기", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
+
+    st.markdown("<br>", unsafe_allow_html=True) # 간격 조절
+
+    # 오늘 라이브 카드 UI
     today_broadcasts = [b for b in broadcast_list if today_date in str(b)]
     if today_broadcasts:
         st.subheader("📺 오늘 라이브")
         b_cols = st.columns(len(today_broadcasts) if len(today_broadcasts) < 4 else 4)
         
-        # 멤버별 색코드를 찾기 위한 딕셔너리 생성
-        member_colors = {str(row['이름']): str(row.get('색코드', '#ff8a80')) for _, row in df_fixed.iterrows()}
-
         for idx, b in enumerate(today_broadcasts):
             with b_cols[idx % 4]:
                 parts = b.split(' ', 1)
                 b_name = parts[0]
                 b_info = parts[1].replace(today_date, "").strip() if len(parts) > 1 else ""
                 
-                # 해당 멤버의 색코드를 가져오거나 기본 빨간색 적용
-                bg_color = member_colors.get(b_name, "#ff8a80")
+                # 🔥 '기타' 시트의 color_map에서 색상 가져오기
+                bg_color = color_map.get(b_name, "#ff8a80")
                 if not bg_color or bg_color == "nan": bg_color = "#ff8a80"
                 
                 st.markdown(f"""
@@ -93,21 +114,14 @@ if not df_fixed.empty:
                 </div>
                 """, unsafe_allow_html=True)
 
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        if st.button("🔄 데이터 즉시 동기화", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
-    with col_btn2:
-        st.link_button("📝 캘린더 시트 수정하러 가기", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
-    
     st.subheader("👥 멤버 실시간 상태")
     for i, row in df_fixed.iterrows():
         if i % 3 == 0:
             cols = st.columns(3)
         with cols[i % 3]:
             name = str(row.get("이름", f"멤버{i+1}"))
-            point_color = str(row.get("색코드", "#111")).strip() or "#111"
+            # 🔥 '기타' 시트의 color_map에서 포인트 색상 가져오기
+            point_color = color_map.get(name, "#111")
             
             days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
             today_name = days[now.weekday()]
