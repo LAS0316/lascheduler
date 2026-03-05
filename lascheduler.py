@@ -32,10 +32,9 @@ def get_las_data():
         except:
             broadcast_list, special_list = [], []
             
-        # 🔥 [신규] '기타' 시트에서 색코드 로드
+        # '기타' 시트에서 색코드 로드
         try:
             sheet3 = spreadsheet.worksheet("기타")
-            # A열: 이름, B열: 색코드 (1행 제목 제외)
             names = sheet3.col_values(1)[1:]
             colors = sheet3.col_values(2)[1:]
             color_map = dict(zip(names, colors))
@@ -68,20 +67,19 @@ if not df_fixed.empty:
     tz_kst = pytz.timezone('Asia/Seoul')
     now = datetime.datetime.now(tz_kst)
     today_date = f"{now.month:02d}/{now.day:02d}"
-    
-    # 상단 타이틀
-    st.title("📅 펭별 시간표")
 
-    # 🔥 [수정] 버튼 위치 이동 (타이틀과 라이브 사이)
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        if st.button("🔄 데이터 즉시 동기화", use_container_width=True):
+    # 🔥 [수정] 최상단 머릿말 버튼 배치 (최대한 작게)
+    header_col1, header_col2, header_col3 = st.columns([1, 1, 4]) # 뒤쪽 공간을 비워 버튼을 왼쪽으로 밀착
+    with header_col1:
+        if st.button("🔄 즉시 동기화", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
-    with col_btn2:
-        st.link_button("📝 캘린더 시트 수정하러 가기", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
+    with header_col2:
+        st.link_button("📝 시트 수정", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
 
-    st.markdown("<br>", unsafe_allow_html=True) # 간격 조절
+    # 🔥 [수정] 타이틀 정중앙 배치
+    st.markdown("<h1 style='text-align: center;'>📅 펭별 시간표</h1>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # 오늘 라이브 카드 UI
     today_broadcasts = [b for b in broadcast_list if today_date in str(b)]
@@ -89,26 +87,20 @@ if not df_fixed.empty:
         st.subheader("📺 오늘 라이브")
         b_cols = st.columns(len(today_broadcasts) if len(today_broadcasts) < 4 else 4)
         
+        # 멤버별 색코드를 찾기 위한 딕셔너리 생성
+        member_colors = color_map
+
         for idx, b in enumerate(today_broadcasts):
             with b_cols[idx % 4]:
                 parts = b.split(' ', 1)
                 b_name = parts[0]
                 b_info = parts[1].replace(today_date, "").strip() if len(parts) > 1 else ""
                 
-                # 🔥 '기타' 시트의 color_map에서 색상 가져오기
-                bg_color = color_map.get(b_name, "#ff8a80")
+                bg_color = member_colors.get(b_name, "#ff8a80")
                 if not bg_color or bg_color == "nan": bg_color = "#ff8a80"
                 
                 st.markdown(f"""
-                <div style='
-                    background-color: {bg_color}; 
-                    border-radius: 10px; 
-                    padding: 15px; 
-                    text-align: center; 
-                    border: 2px solid rgba(0,0,0,0.1);
-                    margin-bottom: 10px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                '>
+                <div style='background-color: {bg_color}; border-radius: 10px; padding: 15px; text-align: center; border: 2px solid rgba(0,0,0,0.1); margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
                     <div style='font-size: 1.4rem; font-weight: 900; color: #111;'>{b_name}</div>
                     <div style='font-size: 0.9rem; font-weight: bold; color: #111;'>{b_info}</div>
                 </div>
@@ -120,7 +112,6 @@ if not df_fixed.empty:
             cols = st.columns(3)
         with cols[i % 3]:
             name = str(row.get("이름", f"멤버{i+1}"))
-            # 🔥 '기타' 시트의 color_map에서 포인트 색상 가져오기
             point_color = color_map.get(name, "#111")
             
             days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
