@@ -25,7 +25,6 @@ def get_las_data():
         
         try:
             sheet2 = spreadsheet.worksheet("특수 일정")
-            # A열: 방송 일정, B열: 특수 일정 (2행 예시 제외)
             broadcast_list = sheet2.col_values(1)[2:] 
             special_list = sheet2.col_values(2)[2:] 
         except:
@@ -59,10 +58,9 @@ if not df_fixed.empty:
     now = datetime.datetime.now(tz_kst)
     today_date = f"{now.month:02d}/{now.day:02d}"
     
-    # 상단 타이틀 변경
     st.title("📅 펭별 시간표")
 
-    # 🔥 [수정] 간결해진 방송 공지 (이모지 및 TODAY LIVE 문구 제거)
+    # 방송 공지
     today_broadcasts = [b for b in broadcast_list if today_date in str(b)]
     if today_broadcasts:
         for b in today_broadcasts:
@@ -82,7 +80,6 @@ if not df_fixed.empty:
             cols = st.columns(3)
         with cols[i % 3]:
             name = str(row.get("이름", f"멤버{i+1}"))
-            name_color = str(row.get("색코드", "#37474F")).strip() or "#37474F"
             
             days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
             today_name = days[now.weekday()]
@@ -98,9 +95,10 @@ if not df_fixed.empty:
             absent_flag = is_currently_absent(display_schedule)
             bg_color, text_color, status_text = ("#ff8a80", "#b71c1c", "부재 중") if absent_flag else ("#2ecc71", "#004d40", "활동 가능")
                 
+            # 🔥 [수정] 모든 멤버의 이름을 진한 검정색(#111)으로 고정
             st.markdown(f"""
             <div style='display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; padding: 20px 10px; margin-bottom: 5px; background-color: {bg_color}; box-shadow: 0 4px 6px rgba(0,0,0,0.1); height: 110px;'>
-                <div style='margin: 0; padding-bottom: 5px; font-size: 1.8rem; font-weight: 900; color: {name_color}; text-align: center;'>{name}</div>
+                <div style='margin: 0; padding-bottom: 5px; font-size: 1.8rem; font-weight: 900; color: #111; text-align: center;'>{name}</div>
                 <div style='font-size: 1.2rem; font-weight: 900; color: {text_color}; text-align: center;'>{status_text}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -115,7 +113,7 @@ if not df_fixed.empty:
     st.subheader("🗓️ 주간 고정 일정표")
     st.dataframe(df_fixed, use_container_width=True)
 
-    # 🔥 [수정] 한국 시간 정보를 가장 아래로 이동
+    # 하단 시간 정보
     st.caption(f"최종 업데이트 확인 (KST): {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
 
 else:
