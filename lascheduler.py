@@ -10,6 +10,32 @@ import pytz
 # 1. 페이지 설정
 st.set_page_config(page_title="lascheduler", layout="wide")
 
+# 🔥 [추가] 작은 화면에서도 버튼 줄바꿈 방지 및 텍스트 크기 조정 CSS
+st.markdown("""
+    <style>
+    /* 버튼 스타일 최적화 */
+    div.stButton > button {
+        width: auto !important;
+        min-width: 90px !important;
+        padding: 0px 10px !important;
+        font-size: 13px !important;
+        height: 32px !important;
+        white-space: nowrap !important; /* 글자 줄바꿈 절대 방지 */
+    }
+    /* 버튼 사이 간격 좁히기 */
+    [data-testid="column"] {
+        width: min-content !important;
+        flex: 0 1 auto !important;
+        min-width: 100px !important;
+        margin-right: -15px !important;
+    }
+    /* 타이틀 중앙 정렬 여백 조정 */
+    h1 {
+        padding: 0.5rem 0rem !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # 2. 데이터 로드 함수
 @st.cache_data(ttl=5)
 def get_las_data():
@@ -20,11 +46,9 @@ def get_las_data():
         client = gspread.authorize(creds)
         spreadsheet = client.open("펭별 시간표 공유") 
         
-        # 고정 일정 로드
         sheet1 = spreadsheet.worksheet("고정 일정")
         df_fixed = pd.DataFrame(sheet1.get_all_records())
         
-        # 특수 일정 로드
         try:
             sheet2 = spreadsheet.worksheet("특수 일정")
             broadcast_list = sheet2.col_values(1)[2:] 
@@ -32,7 +56,6 @@ def get_las_data():
         except:
             broadcast_list, special_list = [], []
             
-        # '기타' 시트에서 색코드 로드
         try:
             sheet3 = spreadsheet.worksheet("기타")
             names = sheet3.col_values(1)[1:]
@@ -68,35 +91,28 @@ if not df_fixed.empty:
     now = datetime.datetime.now(tz_kst)
     today_date = f"{now.month:02d}/{now.day:02d}"
 
-    # 🔥 [수정] 최상단 머릿말 버튼 배치 (최대한 작게)
-    header_col1, header_col2, header_col3 = st.columns([1, 1, 4]) # 뒤쪽 공간을 비워 버튼을 왼쪽으로 밀착
+    # 최상단 머릿말 버튼 (줄바꿈 방지 적용)
+    header_col1, header_col2, header_col3 = st.columns([1, 1, 5]) 
     with header_col1:
-        if st.button("🔄 즉시 동기화", use_container_width=True):
+        if st.button("🔄 즉시 동기화"):
             st.cache_data.clear()
             st.rerun()
     with header_col2:
-        st.link_button("📝 시트 수정", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0", use_container_width=True)
+        st.link_button("📝 시트 수정", "https://docs.google.com/spreadsheets/d/139YrVpzvovwhOnyDDtHhYpYmL8etgJDw4NzKWQKET1o/edit?gid=0#gid=0")
 
-    # 🔥 [수정] 타이틀 정중앙 배치
     st.markdown("<h1 style='text-align: center;'>📅 펭별 시간표</h1>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
 
     # 오늘 라이브 카드 UI
     today_broadcasts = [b for b in broadcast_list if today_date in str(b)]
     if today_broadcasts:
         st.subheader("📺 오늘 라이브")
         b_cols = st.columns(len(today_broadcasts) if len(today_broadcasts) < 4 else 4)
-        
-        # 멤버별 색코드를 찾기 위한 딕셔너리 생성
-        member_colors = color_map
-
         for idx, b in enumerate(today_broadcasts):
             with b_cols[idx % 4]:
                 parts = b.split(' ', 1)
                 b_name = parts[0]
                 b_info = parts[1].replace(today_date, "").strip() if len(parts) > 1 else ""
-                
-                bg_color = member_colors.get(b_name, "#ff8a80")
+                bg_color = color_map.get(b_name, "#ff8a80")
                 if not bg_color or bg_color == "nan": bg_color = "#ff8a80"
                 
                 st.markdown(f"""
@@ -113,18 +129,15 @@ if not df_fixed.empty:
         with cols[i % 3]:
             name = str(row.get("이름", f"멤버{i+1}"))
             point_color = color_map.get(name, "#111")
-            
             days = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
             today_name = days[now.weekday()]
             display_schedule = str(row.get(today_name, "자유"))
             is_special = False
-            
             for note in special_list:
                 if today_date in str(note) and name in str(note):
                     display_schedule = f"⭐ {note}"
                     is_special = True
                     break
-            
             absent_flag = is_currently_absent(display_schedule)
             bg_color, text_color, status_text = ("#ff8a80", "#b71c1c", "부재 중") if absent_flag else ("#2ecc71", "#004d40", "활동 가능")
                 
@@ -146,7 +159,6 @@ if not df_fixed.empty:
     st.divider()
     st.subheader("🗓️ 주간 고정 일정표")
     st.dataframe(df_fixed, use_container_width=True)
-
     st.caption(f"최종 업데이트 확인 (KST): {now.strftime('%Y-%m-%d %H:%M')} ({today_name})")
 
 else:
