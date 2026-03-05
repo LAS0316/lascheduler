@@ -59,20 +59,31 @@ if not df_fixed.empty:
     
     st.title("📅 펭별 시간표")
 
-    # 🔥 [수정] st.error 대신 st.markdown을 사용하여 HTML 강조 적용
+    # 🔥 [수정] 오늘 라이브 카드 UI
     today_broadcasts = [b for b in broadcast_list if today_date in str(b)]
     if today_broadcasts:
-        for b in today_broadcasts:
-            parts = b.split(' ', 1)
-            main_name = f"<span style='font-size: 1.5rem; font-weight: 900; color: #b71c1c;'>{parts[0]}</span>"
-            rest_info = parts[1] if len(parts) > 1 else ""
-            
-            # 빨간색 공지 박스 디자인
-            st.markdown(f"""
-            <div style='background-color: #ff8a80; padding: 15px; border-radius: 10px; border-left: 5px solid #b71c1c; margin-bottom: 20px;'>
-                <span style='color: #b71c1c; font-weight: bold;'>오늘 방송:</span> {main_name} <span style='color: #111;'>{rest_info}</span>
-            </div>
-            """, unsafe_allow_html=True)
+        st.subheader("📺 오늘 라이브")
+        b_cols = st.columns(len(today_broadcasts) if len(today_broadcasts) < 4 else 4)
+        for idx, b in enumerate(today_broadcasts):
+            with b_cols[idx % 4]:
+                parts = b.split(' ', 1)
+                b_name = parts[0]
+                # 날짜 제외하고 시간과 내용만 추출 (예: 16-20 방송)
+                b_info = parts[1].replace(today_date, "").strip() if len(parts) > 1 else ""
+                
+                st.markdown(f"""
+                <div style='
+                    background-color: #ff8a80; 
+                    border-radius: 10px; 
+                    padding: 15px; 
+                    text-align: center; 
+                    border: 2px solid #b71c1c;
+                    margin-bottom: 10px;
+                '>
+                    <div style='font-size: 1.4rem; font-weight: 900; color: #b71c1c;'>{b_name}</div>
+                    <div style='font-size: 0.9rem; font-weight: bold; color: #333;'>{b_info}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
